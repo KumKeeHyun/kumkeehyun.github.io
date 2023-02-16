@@ -7,7 +7,7 @@
         <ul v-show="flag_c">
         {% assign sorted_categories = site.categories | sort %}
         {% for category in sorted_categories %}
-          <li><a href="/categories/{{ category[0] }}">{{ category[0] }} ({{ category[1].size }})</a></li>
+          <li><a href="/categories/#{{ category[0] }}">{{ category[0] }} ({{ category[1].size }})</a></li>
         {% endfor %}
         </ul>
     </li>
