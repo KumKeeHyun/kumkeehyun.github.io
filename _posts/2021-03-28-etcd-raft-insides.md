@@ -1,7 +1,7 @@
 ---
 title: "etcd raft 라이브러리 코드 분석해보기"
-
 permalink: posts/etcd-raft-insides
+classes: wide
 
 categories:
   - database
@@ -12,9 +12,6 @@ tags:
   - raft
   - replication
 last_modified_at: 2023-03-06T00:00:00-00:00
-
-toc: true
-toc_sticky: true
 ---
 
 - 원본: [원본글 바로가기](https://github.com/KumKeeHyun/raspi-cluster/blob/main/raft/etcd/understanding-etcd-raft-1.md)
@@ -23,6 +20,57 @@ toc_sticky: true
 군대 입대 이전에 공허한 마음에 썻던 글이라 부족하기도 하고 전역한 시점에서 2년동안 업데이트 된 내용이 있어서 전체적으로 글을 다듬고 몇가지 부분을 수정했습니다.
 
 소스코드는 '23.03.05 기준으로 최신 테그인 `v3.6.0-alpha.0`을 사용했습니다.
+
+# TOC
+<!--ts-->
+- [TOC](#toc)
+- [서론](#서론)
+	- [왜 이 코드를 분석하게 되었나](#왜-이-코드를-분석하게-되었나)
+	- [들어가기 전에](#들어가기-전에)
+	- [간단하게 raft란](#간단하게-raft란)
+- [etcd raft Readme](#etcd-raft-readme)
+	- [Features](#features)
+		- [기본적인 raft 프로토콜 구현](#기본적인-raft-프로토콜-구현)
+		- [성능 향상을 위한 추가 구현](#성능-향상을-위한-추가-구현)
+	- [Notable Users](#notable-users)
+	- [Usage](#usage)
+		- [1. raft의 주요 Object인 node를 생성, 실행](#1-raft의-주요-object인-node를-생성-실행)
+		- [2. node.Ready() 채널을 읽어서 스토리지를 업데이트하거나 네트워크를 통해 다른 노드로 메시지 전송](#2-nodeready-채널을-읽어서-스토리지를-업데이트하거나-네트워크를-통해-다른-노드로-메시지-전송)
+		- [3. 주기적으로 node.Tick()을 호출해서 HeartbeatTimeout, ElectionTimeout 발생시키기](#3-주기적으로-nodetick을-호출해서-heartbeattimeout-electiontimeout-발생시키기)
+		- [4. raft 모듈 내부로 필요한 메시지를 전달](#4-raft-모듈-내부로-필요한-메시지를-전달)
+- [etcd raft inside](#etcd-raft-inside)
+	- [raft.Node와 Transport 계층](#raftnode와-transport-계층)
+		- [raftpb.Message](#raftpbmessage)
+		- [raft.Node에서 Transport 계층으로](#raftnode에서-transport-계층으로)
+		- [Transport 계층에서 raft.Node로](#transport-계층에서-raftnode로)
+	- [raft.Node가 raftpb.Message를 처리하는 과정](#raftnode가-raftpbmessage를-처리하는-과정)
+		- [Step 함수](#step-함수)
+	- [raft.Node가 raftpb.Message를 Application에게 전달하는 과정](#raftnode가-raftpbmessage를-application에게-전달하는-과정)
+		- [Ready를 통한 배치 처리](#ready를-통한-배치-처리)
+		- [send 헬퍼 함수](#send-헬퍼-함수)
+- [raft 알고리즘](#raft-알고리즘)
+	- [Leader 선출 처리 과정](#leader-선출-처리-과정)
+		- [1. ElectionTimeout 발생](#1-electiontimeout-발생)
+		- [2. Step 함수에서 hup 함수 호출](#2-step-함수에서-hup-함수-호출)
+		- [3. campaign 함수 동작](#3-campaign-함수-동작)
+		- [4. MsgVote를 받은 다른 노드들의 동작](#4-msgvote를-받은-다른-노드들의-동작)
+		- [5. MsgVoteResp를 받은 Candidate 노드의 동작](#5-msgvoteresp를-받은-candidate-노드의-동작)
+	- [로그 복제 처리 과정](#로그-복제-처리-과정)
+		- [1. 새로운 변동 사항을 raft 클러스터에 제안](#1-새로운-변동-사항을-raft-클러스터에-제안)
+		- [2. MsgApp을 받은 Follower 노드의 동작](#2-msgapp을-받은-follower-노드의-동작)
+		- [3. MsgAppResp을 받은 Leader 노드의 동작](#3-msgappresp을-받은-leader-노드의-동작)
+		- [4. Leader가 Follower의 로그 복제 상황을 빠르게 수정하는 방법](#4-leader가-follower의-로그-복제-상황을-빠르게-수정하는-방법)
+			- [case 1](#case-1)
+			- [case 2](#case-2)
+	- [raft.Node에서 채널 이벤트 기반으로 오케스트레이션 하기](#raftnode에서-채널-이벤트-기반으로-오케스트레이션-하기)
+		- [이벤트 루프](#이벤트-루프)
+		- [Chan을 이용한 몇가지 패턴](#chan을-이용한-몇가지-패턴)
+			- [select case](#select-case)
+			- [chan chan](#chan-chan)
+- [마치면서](#마치면서)
+	- [분석글에 더 추가해야 할 내용](#분석글에-더-추가해야-할-내용)
+	- [감사합니다](#감사합니다)
+<!--te-->
 
 # 서론
 ## 왜 이 코드를 분석하게 되었나

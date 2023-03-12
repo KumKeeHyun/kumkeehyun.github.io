@@ -106,13 +106,16 @@ analytics:
 author:
   name             : "KeeHyun Kum"
   avatar           : # path of avatar image, e.g. "/assets/images/bio-photo.jpg"
-  bio              : "I am looking for work."
-  location         : "Republic of Korea. Sejong"
+  bio              : "I am looking for work. 취업하고 싶습니다."
+  location         : "Republic of Korea. Seoul"
   email            : "kbzjung359@gmail.com"
   links:
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
       url: "https://github.com/KumKeeHyun"
+    - label: "Facebook"
+      icon: "fab fa-fw fa-facebook-square"
+      url: "https://www.linkedin.com/in/%EA%B8%B0%ED%98%84-%EA%B8%88-a36b141ba/"
     - label: "Email"
       icon: "fas fa-fw fa-envelope-square"
       # url: "mailto:kbzjung359@gmail.com"
@@ -122,9 +125,6 @@ author:
     - label: "Twitter"
       icon: "fab fa-fw fa-twitter-square"
       # url: "https://twitter.com/"
-    - label: "Facebook"
-      icon: "fab fa-fw fa-facebook-square"
-      url: "https://facebook.com/kumkeehyun/"
     - label: "Instagram"
       icon: "fab fa-fw fa-instagram"
       # url: "https://instagram.com/"
@@ -285,6 +285,7 @@ defaults:
       type: posts
     values:
       layout: single
+      classes: wide
       author_profile: true
       read_time: true
       comments: # true

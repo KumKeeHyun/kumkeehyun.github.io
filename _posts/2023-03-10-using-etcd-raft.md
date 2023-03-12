@@ -1,7 +1,7 @@
 ---
 title: "etcd raft 라이브러리 사용해보기"
-
 permalink: posts/using-etcd-raft
+classes: wide
 
 categories:
   - database
@@ -11,13 +11,39 @@ tags:
   - raft
   - replication
 last_modified_at: 2023-03-10T00:00:00-00:00
-
-toc: true
-toc_sticky: true
 ---
 
 - 원본: [원본글 바로가기](https://github.com/KumKeeHyun/raspi-cluster/blob/main/raft/etcd/understanding-etcd-raft-2.md)
 - 이전 시리즈: [etcd raft 모듈 분석해보기](./etcd-raft-insides)
+
+# TOC
+<!--ts-->
+- [TOC](#toc)
+- [서론](#서론)
+	- [ChatGPT님는 알고있을까요?](#chatgpt님는-알고있을까요)
+- [godis](#godis)
+- [bootstrap](#bootstrap)
+	- [etcd의 경우](#etcd의-경우)
+	- [내 구현](#내-구현)
+- [Transport Peers](#transport-peers)
+- [raft main loop](#raft-main-loop)
+	- [etcd의 경우](#etcd의-경우-1)
+	- [내 구현](#내-구현-1)
+- [write request](#write-request)
+	- [propose와 wait](#propose와-wait)
+	- [follower handle write request](#follower-handle-write-request)
+- [read request](#read-request)
+	- [slow follower](#slow-follower)
+- [snapshot](#snapshot)
+	- [trigger snaphsot](#trigger-snaphsot)
+	- [send snaphsot](#send-snaphsot)
+	- [apply snaphost](#apply-snaphost)
+	- [snapshot 흐름 정리](#snapshot-흐름-정리)
+- [결과](#결과)
+	- [클러스터 생성](#클러스터-생성)
+	- [새로운 노드 참가](#새로운-노드-참가)
+- [마치며](#마치며)
+<!--te-->
 
 # 서론
 
