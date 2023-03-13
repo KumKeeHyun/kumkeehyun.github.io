@@ -5,9 +5,32 @@ layout: single
 classes: wide
 ---
 
+<a href="mailto:kbzjung359@gmail.com" rel="me" class="u-email">
+    <meta itemprop="email" content="kbzjung359@gmail.com" />
+    <i class="fas fa-fw fa-envelope-square" aria-hidden="true"></i><span class="label">Email</span>
+</a>
+
+<a href="https://github.com/KumKeeHyun" rel="nofollow noopener noreferrer me" itemprop="sameAs">
+    <i class="fab fa-fw fa-github" aria-hidden="true"></i>
+    <span class="label">GitHub</span>
+</a>
+
+<a href="https://www.linkedin.com/in/%EA%B8%B0%ED%98%84-%EA%B8%88-a36b141ba/" rel="nofollow noopener noreferrer me" itemprop="sameAs">
+    <i class="fab fa-fw fa-linkedin" aria-hidden="true"></i>
+    <span class="label">LinkedIn</span>
+</a>
+
+
+
 ## About Me
 
+Spring 프레임워크로 백엔드 개발 경험이 있습니다. Golang으로 백엔드, 인프라 관련 프로젝트하는 것을 즐깁니다.
 
+데이터 처리, 분산 환경에 관심이 많습니다. 
+새로운 지식을 공부할 때는 깊게 파고들어가는 것을 좋아하며, 때로는 이해를 위해 코드 분석도 마다하지 않습니다. 
+
+Trade-off 관계에서 Pareto optimality를 찾아가는 사고 과정을 좋아합니다. 
+모든 상황에 맞는 정답은 없다고 생각하고 다양한 관점, 고려 사항을 기반으로 최적의 선택을 하려 노력합니다.
 
 ## Experience
 
@@ -20,8 +43,9 @@ classes: wide
 - 수사단 업무 지원 체계 개발
   - 결재 라인(결재자 등록, 결재/기각/전결) 기능 개발
   - 직급(6개) 및 소속(10개 이상)에 따른 자원 접근 권한 기능 개발
-  - 2개월간 기능 개발 + 취약성 검사 + 기능 평가를 끝내고 성공적으로 목표했던 날짜에 서비스 론칭
-  - Spring Boot 2 + JPA + Oracle
+  - SSO 커스텀 인증 필터 개발
+  - 2개월간 기능 개발, 취약성 검사, 시험 평가를 마치고 성공적으로 목표했던 날짜에 서비스 론칭
+  - Spring Boot 2, JPA, Oracle
 
 ---
 
@@ -29,11 +53,11 @@ classes: wide
   - Log4Shell 취약점 대응
   - 비지니스 로직 관련 버그 수정
   - 용이한 유지보수를 위해 Maven 프로젝트로 변환 작업
-  - JSP + Spring 5 + Mybatis + Oracle
+  - JSP, Spring 5, Mybatis, Oracle
 
 ---
 
-- 서비스별로 중복 개발해서 사용하던 기능들을 정리 & 라이브러리 형태로 개발
+- 각 체계별로 중복 개발해서 사용하던 기능들을 정리 & 라이브러리 형태로 개발
   - SSO 인증 기능
   - 조직도 트리 형태 조회 기능
   - 파일 업로드/다운로드 기능
@@ -53,26 +77,28 @@ classes: wide
 
 <figure class="third">
     <ul>
-        <li><span><span class="btn btn--info btn--small">2.5</span> Golang</span></li>
+        <li><span><span class="btn btn--info btn--small">3</span> Golang</span></li>
     </ul>
     <ul>
-        <li><span><span class="btn btn--info btn--small">2</span> Java</span></li>
+        <li><span><span class="btn btn--success btn--small">2</span> Java</span></li>
     </ul>
     <ul>
         <li><span><span class="btn btn--inverse btn--small">1</span> Python</span></li>
     </ul>
 </figure>
+
+---
   
 #### Backend
 
 <figure class="third">
     <ul>
         <li><span><span class="btn btn--success btn--small">2</span> Gin</span></li>
-        <li><span><span class="btn btn--success btn--small">1.5</span> Gorm</span></li>
+        <li><span><span class="btn btn--success btn--small">2</span> Gorm</span></li>
     </ul>
     <ul>
         <li><span><span class="btn btn--success btn--small">2</span> Spring MVC</span></li>
-        <li><span><span class="btn btn--info btn--small">2.5</span> Spring Security</span></li>
+        <li><span><span class="btn btn--success btn--small">2</span> Spring Security</span></li>
     </ul>
     <ul>
         <li><span><span class="btn btn--success btn--small">2</span> Jpa</span></li>
@@ -80,12 +106,14 @@ classes: wide
     </ul>
 </figure>
 
+---
+
 #### DB
 
 <figure class="third">
     <ul>
-        <li><span><span class="btn btn--success btn--small">2</span> SQL(Oracle)</span></li>
-        <li><span><span class="btn btn--success btn--small">1.5</span> Redis</span></li>
+        <li><span><span class="btn btn--success btn--small">2</span> SQL</span></li>
+        <li><span><span class="btn btn--inverse btn--small">1</span> Redis</span></li>
     </ul>
     <ul>
         <li><span><span class="btn btn--success btn--small">2</span> Kafka</span></li>
@@ -96,22 +124,26 @@ classes: wide
     </ul>
 </figure>
 
+---
+
 #### Data Processing
 
 <figure class="third">
     <ul>
-        <li><span><span class="btn btn--success btn--small">1.5</span> Kafka Streams</span></li>
+        <li><span><span class="btn btn--inverse btn--small">1</span> Kafka Streams</span></li>
     </ul>
 </figure>
 
 #### Container
+
+---
 
 <figure class="third">
     <ul>
         <li><span><span class="btn btn--success btn--small">2</span> Docker</span></li>
     </ul>
     <ul>
-        <li><span><span class="btn btn--success btn--small">1.5</span> Kubernetes</span></li>
+        <li><span><span class="btn btn--success btn--small">2</span> Kubernetes</span></li>
     </ul>
 </figure>
 
@@ -124,6 +156,9 @@ eBPF를 이용해서 쿠버네티스 파드 네트워크를 모니터링하는 �
 
 - 개인 프로젝트
 - [github](https://github.com/KumKeeHyun/perisco)
+- ebpf를 이용하여 socket_send/recv 관련 함수에서 송수신 데이터 복사
+- raw bytes에서 http1, http2 등 7계층 프로토콜 파싱
+- pods 관련 메타데이터 보강 후 저장 및 시각화
 - Cilium/ebpf, Kubernetes
 
 ### gstream
@@ -133,20 +168,24 @@ Kafka Streams DSL을 모방한 Golang 채널 스트림 처리 라이브러리
 
 - 개인 프로젝트
 - [github](https://github.com/KumKeeHyun/gstream)
-- Golang, BoltDB
+- Golang으로 Kafka Stream의 KStream, KTable 개념 구현
+- filter, map, groupby 등 함수형 유틸리티 구현
+- Golang, BoltDB, Kafka Streams
 
 ### ToIoT
 2020.07 ~ 2020.11
 
-센서 데이터를 수집, 사용자 정의 가공, 시각화하는 IoT 플랫폼
+센서 데이터를 수집, 가공, 시각화하는 IoT 플랫폼
 
-🎂수상🎂 2020 공개SW 개발자대회 학생부문 동상
+🏆수상🏆 2020 공개SW 개발자대회 학생부문 동상
 
 - 4인 프로젝트
 - [github](https://github.com/SSU-NC/toiot)
 - 맡은 일
-  - 센서 등록, 조회 API 개발 (Gin + Gorm)
-  - 센서 데이터를 가공하는 Kafka Consumer 개발 (Kafka + Shopify/sarama)
+  - 센서 등록, 조회 API 개발
+  - 사용자 정의 데이터 처리를 위한 API 개발
+  - 센서 데이터를 가공하는 Kafka Consumer 개발
+- Golang, Gin, Gorm, MySQL, Kafka, Elasticsearch
 
 ## Article
 
