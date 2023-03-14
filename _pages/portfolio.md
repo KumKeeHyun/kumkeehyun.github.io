@@ -67,7 +67,7 @@ Trade-off 관계에서 Pareto optimality를 찾아가는 사고 과정을 좋아
   - 국인체 고도화 사업에 따른 연동 프로시저 재작성
   - 연동 테이블 약 30개, 타겟 테이블 약 15개
   - 일일 연동 데이터 평균 30,000개 
-  - PL/SQL + Oracle
+  - PL/SQL, Oracle
 
 ## Skills
 
@@ -155,6 +155,7 @@ Trade-off 관계에서 Pareto optimality를 찾아가는 사고 과정을 좋아
 eBPF를 이용해서 쿠버네티스 파드 네트워크를 모니터링하는 솔루션
 
 - 개인 프로젝트
+- k8s 특정 cni에 종속적이지 않은 네트워크 모니터링을 만들어보자는 목표로 시작
 - [github](https://github.com/KumKeeHyun/perisco)
 - ebpf를 이용하여 socket_send/recv 관련 함수에서 송수신 데이터 복사
 - raw bytes에서 http1, http2 등 7계층 프로토콜 파싱
@@ -167,6 +168,7 @@ eBPF를 이용해서 쿠버네티스 파드 네트워크를 모니터링하는 �
 Kafka Streams DSL을 모방한 Golang 채널 스트림 처리 라이브러리
 
 - 개인 프로젝트
+- Golang에도 Java의 스트림 API가 있었으면 좋겠다는 생각 & 마침 generic이 새로 추가되어서 시작
 - [github](https://github.com/KumKeeHyun/gstream)
 - Golang으로 Kafka Stream의 KStream, KTable 개념 구현
 - filter, map, groupby 등 함수형 유틸리티 구현
