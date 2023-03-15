@@ -194,6 +194,7 @@ Kafka Streams DSL을 모방한 Golang 채널 스트림 처리 라이브러리
 ## Article
 
 - [(2023.03.10) etcd raft 모듈 사용해보기](https://kumkeehyun.github.io/posts/using-etcd-raft)
+- [(2022.09.09) 함수형 프로그래밍 모나드 ppt 발표](https://speakerdeck.com/kums/gonggun-jeongbocegyegwanridan-jeonsanhanmadang-monadeu)
 - [(2021.03.28) etcd raft 모듈 분석](https://kumkeehyun.github.io/posts/etcd-raft-insides)
 
 ## Education
