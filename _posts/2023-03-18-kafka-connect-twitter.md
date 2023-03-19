@@ -35,7 +35,7 @@ last_modified_at: 2023-03-18T00:00:00-00:00
 
 머지는 되지 않았지만 직접 빌드해서 사용해보니 잘 작동되었다. 
 
-하지만 큰 산이 하나더 기다리고 있었다. 바로 [Expansions](https://developer.twitter.com/en/docs/twitter-api/expansions) 기능을 지원하지 않아서 내가 필요한 유저 세부 정보를 받을 수 없는 것이었다. 어딘가 썪어있는 동아줄을 고쳐야 하는 상황이 되어버렸다.
+하지만 큰 산이 하나더 기다리고 있었다. 바로 [Expansions](https://developer.twitter.com/en/docs/twitter-api/expansions) 기능을 지원하지 않아서 내가 필요한 유저 세부 정보를 받을 수 없는 것이었다. 어딘가 썩어있는 동아줄을 고쳐야 하는 상황이 되어버렸다.
 
 # 고쳐야 할 부분 분석
 
