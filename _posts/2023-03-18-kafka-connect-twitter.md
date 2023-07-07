@@ -1,6 +1,5 @@
 ---
-title: "빅데이터프로그래밍 프로젝트 2편"
-subtitle: "kafka connect twitter 손보기"
+title: "kafka connect twitter에 Expansions 기능 추가하기"
 permalink: posts/bdp-project/twitter-kafka-connect
 classes: wide
 

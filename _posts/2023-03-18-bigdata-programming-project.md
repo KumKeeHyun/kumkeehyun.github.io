@@ -1,4 +1,6 @@
 ---
+published: false
+
 title: "빅데이터프로그래밍 프로젝트 1편"
 subtitle: "프로젝트 구상 및 설계하기"
 permalink: posts/bdp-project/intro

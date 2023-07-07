@@ -1,4 +1,6 @@
 ---
+published: false
+
 title: "빅데이터프로그래밍 프로젝트 3편"
 subtitle: "hdfs-sink-connector 테스트하기"
 permalink: posts/bdp-project/test-hdfs-sink-connector
