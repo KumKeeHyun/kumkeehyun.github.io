@@ -25,9 +25,8 @@ classes: wide
 
 Golang으로 백엔드, 인프라 관련 프로젝트하는 것을 즐깁니다.
 
-데이터 처리, 분산 환경에 관심이 많습니다. 
-새로운 지식을 공부할 때는 깊게 파고들어가는 것을 선호합니다. 
-때로는 내부구조 파악을 위해 소스 코드를 분석하고, 정리한 내용을 글로 남깁니다.
+분산 환경과 쿠버네티스 컴포넌트 등에 관심이 많습니다.
+새로운 지식을 공부할 때는 깊게 파고들어가는 것을 선호합니다. 인터넷 자료보다는 책을 통해 공부하는 것을 선호합니다. 때로는 내부구조를 이해하기 위해 소스코드 분석도 진행합니다.
 
 Trade-off 관계에서 Pareto optimality를 찾아가는 사고 과정을 좋아합니다. 
 모든 상황에 맞는 하나의 정답은 없다고 생각하고 다양한 관점, 고려 사항을 기반으로 최적의 선택을 하려 노력합니다.
@@ -36,18 +35,32 @@ Trade-off 관계에서 Pareto optimality를 찾아가는 사고 과정을 좋아
 ## Projects
 
 ### perisco
-2022.06 ~ 현재
+2022.06 ~ 2022.10, 2023.03 ~ 2023.05
 
 eBPF를 활용하여 마이크로서비스 네트워크를 모니터링하는 솔루션
 
 - 개인 프로젝트
-- [github link](https://github.com/KumKeeHyun/perisco)
 - 서비스에 네트워크 로그 저장과 관련된 코드가 없어도 자동으로 로그 생성이 가능합니다
 - 특정한 k8s cni에 종속되지 않고 flannel, callico, cilium 등의 cni들에서 잘 작동합니다
 - 불필요한 이벤트 수신을 방지하기 위해 Circuit Breaker 패턴을 적용했습니다
 - 추후 다른 프로토콜을 추가할 수 있도록 확장성 있는 설계를 위해서 Composite, Factory 등의 패턴을 적용했습니다
 - HTTP/2 로그 생성을 위해서 프로토콜의 Stream, Frame, Hpack 등 세부 구조에 대해 공부했습니다
-- Cilium/ebpf, Kubernetes, Grafana
+- cilium/ebpf, Kubernetes, Grafana
+- [github link](https://github.com/KumKeeHyun/perisco)
+
+### godis
+2023.01 ~ 2023.03, 2023.07
+
+Raft 알고리즘 기반 복제 기능을 지원하는 간단한 분산 데이터베이스
+
+- 개인 프로젝트
+- etcd-raft 라이브러리를 이용하여 Raft 알고리즘 기반 복제 기능이 있는 분산 데이터베이스 구현
+- Redis 문서를 참고하여 Redis Serialization Protocol v2 를 구현했습니다.
+- etcd-raft 라이브러리를 사용하여 복제 기능 및 스냅샷 기능을 구현했습니다.
+- 쿠버네티스 커스텀 컨트롤러를 구현하여 선언적으로 배포, 확장할 수 있는 기능을 구현했습니다.
+- Golang, etcd/raft, Kubernetes
+- [github link](https://github.com/KumKeeHyun/godis)
+
 
 ### gstream
 2022.11 ~ 2023.01
@@ -55,12 +68,12 @@ eBPF를 활용하여 마이크로서비스 네트워크를 모니터링하는 �
 Kafka Streams DSL을 모방한 Golang 채널 스트림 처리 라이브러리
 
 - 개인 프로젝트
-- Java의 스트림 API와 비슷하지만 Golang의 특성이 담긴 라이브러리가 있으면 좋겠다는 생각으로 진행했습니다
-- [github link](https://github.com/KumKeeHyun/gstream)
+- Go 언어의 채널을 기반으로 Kafka Streams 의 KStream, KTable 개념을 모방하는 스트림 구현
 - KStream, KTable 개념을 구현하기 위해 실제 Kafka Streams의 소스코드를 분석했습니다
 - map, flatMap, reduce 등 함수형 유틸리티 구현을 위해서 모나드 개념을 공부했습니다
 - stream backpressure를 해결하기 위해 채널 버퍼 조절, 고루틴 추가 생성 등의 기능을 구현했습니다
 - Golang, BoltDB, Kafka Streams
+- [github link](https://github.com/KumKeeHyun/gstream)
 
 ### ToIoT
 2020.07 ~ 2020.11
