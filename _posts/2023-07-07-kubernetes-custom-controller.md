@@ -23,11 +23,30 @@ last_modified_at: 2023-07-07T00:00:00-00:00
 - [TOC](#toc)
 - [서론](#서론)
 - [Kubernetes Controller](#kubernetes-controller)
-  - [Control Plain](#control-plain)
-  - [Controller Manager](#controller-manager)
-  - [Controller 기본 구조](#controller-기본-구조)
-  - [Expectations](#expectations)
+	- [Control Plain](#control-plain)
+	- [Controller Manager](#controller-manager)
+	- [Controller 기본 구조](#controller-기본-구조)
+	- [Expectations](#expectations)
+	- [Optimistic Locking(resourceVersion)](#optimistic-lockingresourceversion)
 - [Godis Controller](#godis-controller)
+	- [Godis 가내수공업 배포](#godis-가내수공업-배포)
+	- [CRD 및 컨트롤러 설계](#crd-및-컨트롤러-설계)
+		- [Replicas](#replicas)
+		- [ID](#id)
+		- [CRD, Resources](#crd-resources)
+		- [initial-cluster](#initial-cluster)
+	- [SyncHandler 구현](#synchandler-구현)
+		- [Status](#status)
+		- [클러스터 생성](#클러스터-생성)
+		- [클러스터 확장](#클러스터-확장)
+		- [클러스터 축소](#클러스터-축소)
+		- [단계적 스케일링](#단계적-스케일링)
+	- [결과물](#결과물)
+		- [클러스터 생성](#클러스터-생성-1)
+		- [클러스터 확장](#클러스터-확장-1)
+		- [클러스터 축소](#클러스터-축소-1)
+		- [포드 중단 및 자동 복구](#포드-중단-및-자동-복구)
+		- [노드 제거 및 자동 복구](#노드-제거-및-자동-복구)
 - [마치면서](#마치면서)
 <!--te-->
 
@@ -50,9 +69,9 @@ last_modified_at: 2023-07-07T00:00:00-00:00
 
 ## Control Plain
 
-<img width="455" alt="image" src="https://github.com/KumKeeHyun/raspi-cluster/assets/44857109/9855d1c0-5245-4ef1-a0ae-1ded1149b8d4">
+<img width="455" alt="image" src="https://github.com/KumKeeHyun/raspi-cluster/assets/44857109/6e39be95-e331-447a-bb54-205b65de4557">
 
-`etcd`, `API Server`, `Scheduler`, `Controller Manager`는 쿠버네티스 컨트롤 플레인의 가장 기본적인 구성요소 입니다. 여기서 `API 서버`의 역할은 다음과 같습니다.
+`etcd`, `API Server`, `Scheduler`, `Controller Manager`는 쿠버네티스 컨트롤 플레인의 기본적인 구성요소 입니다. 여기서 `API 서버`의 역할은 다음과 같습니다.
 
 - RBAC를 통해 인가된 API 요청인지 판단
 - 요청 payload가 유효한지 검사
@@ -63,7 +82,7 @@ last_modified_at: 2023-07-07T00:00:00-00:00
 
 하지만 API 서버가 정작 하는 일은 사용자 요청에 따라 etcd에 CRUD 작업을 수행하고, 특정 리소스 변경을 구독하는 클라이언트들에게 변경 사항을 알려주는 것이 전부입니다. 즉, API 서버는 etcd에 새로운 포드의 정보를 저장하고, 포드 변경 사항 이벤트를 구독하고있는 클라이언트들에게 전달하는 작업만 담당합니다. 그렇다면 kubelet은 어떻게 포드를 생성하는 걸까요?
 
-<img width="1126" alt="image" src="https://github.com/KumKeeHyun/raspi-cluster/assets/44857109/1cba075c-0a81-44e9-9966-523a400c896b">
+<img width="1126" alt="image" src="https://github.com/KumKeeHyun/raspi-cluster/assets/44857109/813128e0-2f2f-412b-ad1c-4e7620522480">
 
 kubelet이 새로 생성할 포드 정보를 받는 과정을 간단하게 정리한 그림입니다.
 
@@ -78,7 +97,7 @@ kubelet이 새로 생성할 포드 정보를 받는 과정을 간단하게 정�
 
 ## Controller Manager
 
-쿠버네티스에는 포드 이외에 ReplicaSet, Deployment, Service... 등의 여러 리소스가 있습니다. Deployment를 생성하면 ReplicaSet, Pod가 자동으로 생성되는데 이처럼 현재 상태가 선언된 상태로 수렴하도록 조정하는 작업을 수행하는 것이 컨트롤러입니다.
+쿠버네티스에는 포드 이외에 ReplicaSet, Deployment, Service... 등의 여러 리소스 타입들이 있습니다. Deployment를 생성하면 ReplicaSet, Pod가 자동으로 생성되는데 이처럼 현재 상태가 선언된 상태로 수렴하도록 조정하는 작업을 수행하는 것이 컨트롤러입니다.
 
 컨트롤러 매니저는 여러 컨트롤러를 모아놓은 것이고 다음과 같은 컨트롤러들이 있습니다.
 
@@ -108,10 +127,12 @@ Watch API를 대신 처리해주는 Informer, API 서버에 조회 요청을 보
 
 특이한 점은 
 
-- 리소스 조회시 API 서버로 요청을 하는 것이 아니라 Informer(Watch)에 의해 관리되는 캐시를 사용
+- 리소스 조회 시 API 서버로 요청을 하는 것이 아니라 Informer(Watch)에 의해 관리되는 캐시를 사용
 - 이벤트를 전달할 때 리소스 전체를 전달하는 것이 아니라 key만 전달
 
 한다는 것입니다.
+
+[sample-controller](https://github.com/kubernetes/sample-controller)의 코드를 살펴보겠습니다.
 
 ```go
 // https://github.com/kubernetes/sample-controller/blob/master/controller.go#L88
@@ -233,7 +254,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 
 ## Expectations
 
-SyncHandler를 작성할때 주의해야 하는 점은 리소스 조회시 API 서버가 아닌 캐시를 조회한다는 것입니다. API 서버의 최신 상태가 반영되지 않은 상태에서 조정 작업을 수행하면 뜻하지 않은 작업이 수행될 수 있습니다.
+SyncHandler를 작성할때 주의해야 하는 점은 리소스 조회 시 API 서버가 아닌 캐시를 조회한다는 것입니다. API 서버의 최신 상태가 반영되지 않은 상태에서 조정 작업을 수행하면 뜻하지 않은 작업이 수행될 수 있습니다.
 
 예를 들어, 아래 그림처럼 API 서버에는 spec에 맞게 3개의 포드가 생성된 상태이지만 아직 캐시에 반영이 되지 않아서 불필요한 포드를 생성하는 상황이 생길 수 있습니다.
 
@@ -299,7 +320,7 @@ func (rsc *ReplicaSetController) syncReplicaSet(ctx context.Context, key string)
 }
 ```
 
-ReplicaSet 컨트롤러의 SyncHandler를 보면 조정작업을 하기 전에 `expectations.SatisfiedExpectations()`을 통해 생성/삭제했지만 아직 확인되지 않는 포드가 있다면 추가적인 조정 작업을 수행하지 않는 것을 확인할 수 있습니다.
+ReplicaSet 컨트롤러의 SyncHandler를 보면 조정 작업을 하기 전에 `expectations.SatisfiedExpectations()`을 통해 생성/삭제했지만 아직 확인되지 않는 포드가 있다면 추가적인 조정 작업을 수행하지 않는 것을 확인할 수 있습니다.
 
 ```go
 // https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/replicaset/replica_set.go#L565C1-L665C2
@@ -388,9 +409,299 @@ func (rsc *ReplicaSetController) addPod(logger klog.Logger, obj interface{}) {
 
 조정 작업에서 바로 포드 생성 응답을 받지 못한 경우에 Watch를 통해 expectations를 해결할 수 있도록 eventHandler에도 `expectations.CreationObserved()`를 사용하는 것을 확인할 수 있습니다.
 
-하지만 이 Expections는 생성/삭제만 처리가 가능하고 상태 변경 등의 작업은 커버할 수 없다는 한계가 있습니다. 또 `ExpectCreations`시 기댓값을 횟수로만 지정할 수 있어서 특정 UID를 기반으로 설정할 수 없다는 문제점도 있습니다(delete는 있음). 
-[LINE에서 선언형 DB as a Service를 개발하며 얻은 쿠버네티스 네이티브 프로그래밍 기법 공유](https://2022.openinfradays.kr/session/3) 세션 뒷부분을 보면 Expectations를 확장해서 기댔값을 처리한 사례가 소개되어있습니다.
+하지만 이 Expections는 생성/삭제만 처리가 가능하고 상태 변경 등의 작업은 커버할 수 없다는 한계가 있습니다. 또 `ExpectCreations`는 기댓값을 횟수로만 지정할 수 있어서 특정 UID를 기반으로 설정할 수 없다는 문제점도 있습니다(delete는 있음). 
+[LINE에서 선언형 DB as a Service를 개발하며 얻은 쿠버네티스 네이티브 프로그래밍 기법 공유](https://2022.openinfradays.kr/session/3) 세션 뒷부분을 보면 Expectations를 확장해서 기댓값을 처리한 사례가 소개되어있습니다.
+
+## Optimistic Locking(resourceVersion)
+
+이 부분은 다른 글들에서도 잘 설명되어 있어서 간단하게만 정리하고 넘어가려 합니다.
+
+모든 쿠버네티스 리소스는 `metadata.resourceVersion`를 포함하고 있고 이 버전 정보를 통해 API 서버에서는 낙관적 동시성 제어(optimistic concurrency control)을 수행합니다.
+
+컨트롤러에서 조정 작업 수행 시 리소스의 상태를 수정하기 위한 절차는 다음과 같습니다.
+
+1. Lister(캐시)에서 리소스 조회
+2. 리소스 Deepcopy
+   - Informer에 의해 캐싱되어 있는 객체이기 때문에 직접 수정하면 안됨
+3. 리소스 수정
+4. API 서버로 Update 요청
+
+```go
+// https://github.com/kubernetes/sample-controller/blob/master/controller.go#L249
+func (c *Controller) syncHandler(ctx context.Context, key string) error {
+	// ...	
+	foo, err := c.foosLister.Foos(namespace).Get(name)
+	// ...
+	err = c.updateFooStatus(foo, deployment)
+	// ...
+}
+
+// https://github.com/kubernetes/sample-controller/blob/master/controller.go#L329
+func (c *Controller) updateFooStatus(foo *samplev1alpha1.Foo, deployment *appsv1.Deployment) error {
+	// NEVER modify objects from the store. It's a read-only, local cache.
+	// You can use DeepCopy() to make a deep copy of original object and modify this copy
+	// Or create a copy manually for better performance
+	fooCopy := foo.DeepCopy()
+	fooCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
+	
+	_, err := c.sampleclientset.SamplecontrollerV1alpha1().Foos(foo.Namespace).UpdateStatus(context.TODO(), fooCopy, metav1.UpdateOptions{})
+	return err
+}
+```
+
+수정/업데이트하는 리소스는 캐시에서 조회한 것이기 때문에 항상 최신값인 것이 아닙니다. 당연히 최신이 아닌 버전의 리소스를 조회하고 수정할 가능성이 있지만, API 서버에서 resourceVersion을 통해서 낙관적 동시성 제어를 해주기 때문에 걱정할 필요는 없습니다. 
 
 # Godis Controller
+
+사실 이 글의 메인은 Godis Controller인데... '앞부분이 너무 긴 것 같네 <-> 개념 정리인데 좀 간략하네'의 무한 굴레에 빠졌습니다. 그래도 정리하려 했던 내용은 다 쓴 것 같아서 다음으로 넘어가려합니다.
+
+서론에 써두었지만 Godis Controller의 목표는 yaml 파일로 godis 클러스터를 배포, 확장, 축소할 수 있도록 자동화하는 것이었습니다. 처음엔 StatefulSet으로 가능한지 고려해보았지만, Godis에서는 멤버십이 변경될 떄 기존 클러스터에게 요청을 보내야하기 때문에 로직을 자유롭게 작성할 수 있는 커스텀 컨트롤러로 결정했습니다.
+
+## Godis 가내수공업 배포
+
+먼저 가내수공업으로 어떻게 Godis 클러스터를 생성/확장/축소하는지 알아보겠습니다.
+
+먼저 Godis는 다음과 같이 실행합니다.
+
+```bash
+# node1
+$ godis cluster --id 1 \
+--listen-client http://0.0.0.0:6379 \
+--listen-peer http://127.0.0.1:6300 \
+--initial-cluster 1@http://127.0.0.1:6300,2@http://127.0.0.1:16300,3@http://127.0.0.1:26300 \
+--waldir /some/wal/path \
+--snapdir /some/sanp/path \
+--join false
+```
+
+- id : 클러스터 내에서 유니크한 id, 정수값
+- initial-cluster : 클러스터 멤버십(id, peerURL 쌍)
+- waldir, snapdir : wal, snaphost을 저장할 디렉토리 경로
+- join : 기존 클러스터에 참가하면 true, 초기 클러스터 구성은 false
+
+각 노드들은 `initial-cluster`로 전달받은 peer들을 멤버십에 추가한 뒤에 Raft 알고리즘에 따라 리더를 선출합니다. 따로 디스커버리 서비스가 없어서 초기 클러스터 멤버십을 전달하는 방법이 `initial-cluster` 뿐이라 빠트린 것이 없는지 잘 확인해야 합니다.
+
+기존 클러스터에 새로운 노드를 추가 or 기존 노드를 제거할 떄는 클러스터 멤버십을 수동으로 변경해주어야 합니다. 멤버십 변경은 따로 클라이언트에서 `cluster meet`, `cluster forget` 커맨트로 수행합니다.
+
+```bash
+# id=4, peerURL=http://127.0.0.1:36300인 새로운 노드 멤버십에 추가 -> 새로운 노드 실행
+$ cluster meet 4 http://127.0.0.1:36300
+
+# id=1인 노드 프로세스 중지 -> 멤버십에서 노드 제거
+$ cluster forget 1 
+```
+
+## CRD 및 컨트롤러 설계
+
+### Replicas
+
+Godis에는 Raft 알고리즘 관련 설정 이외에 성능 관련 설정이 없습니다. 그래서 배포할 때 신경써야 할 것이 실행할 노드 개수밖에 없습니다. 즉 `CRD.spec`에 들어갈 정보가 `replicas`밖에 없습니다...
+
+처음 `.spec.replicas=3`으로 CRD를 생성하면 컨트롤러는 3개의 노드로 구성된 클러스터를 생성하고, 이후 값을 변경하면 노드 추가/제거를 수행하는 컨트롤러를 작성해야 합니다.
+
+노드 추가/제거 시에 주의해야 할 점은 한번에 많은 멤버을 변경하게되면 기존 클러스터가 quorum을 잃을 수 있다는 것입니다. 만약 `replicas=3 -> replicas=6`으로 변경해서 멤버십을 6개의 노드로 변경된 상황이라면 3개의 새로운 노드 프로세스가 실행될때까지 기존 클러스터는 quorum을 잃고 요청을 처리할 수 없게 됩니다. 
+
+그래서 `.spec.replicas`가 3에서 6으로 변경되더라도 `4 -> 5 -> 6`으로 순차적으로 확장되도록 컨트롤러를 작성해야 합니다.
+
+### ID
+
+노드를 생성할 때는 식별자에 ID를 접미사로 붙여서 리소스를 생성하도록 했습니다. ID는 1부터 새로운 노드가 추가될때마다 순차적으로 증가하도록 했는데, 이전에 제거되었던 노드의 ID는 재사용하지 않도록 구성했습니다.
+
+```
+ID() --(replicas=3 생성)--> ID(1, 2, 3) --(replicas=2 수정)--> ID(1, 2) --(replicas=4 수정)--> ID(1, 2, 4, 5)
+```
+
+만약 ID를 재사용한다면, 제거->생성이 짧은 시간 내에 이뤄진 경우에 해당 리소스가 제거해야 할 리소스인지, 새로 생성된 리소스인지 판단하기 힘듭니다. 결정적으로 raft 로그 복제 도중에 같은 ID로 제거된 멤버십 변경 로그가 복제되어서 자신이 제거된 것이 아닌데도 제거되었다고 판단하고 죽어버리기 때문에 재사용할 수 없었습니다.
+
+### CRD, Resources
+
+쿠버네티스 상에서 Godis 노드를 배포하기 위해서 고려해야 했던 점은
+
+- 포드 재시작
+- WAL, Snapshot 파일 저장
+- Peer간 통신 엔드포인트
+
+였습니다.
+
+먼저 포드가 예상치 않게 중단된 경우 새로운 포드를 생성해야 하는데 이를 컨트롤러가 직접 제어할지, ReplicaSet을 이용할지 선택해야 했습니다. 
+
+Godis는 WAL, Snapshot을 통한 재시작 매커니즘을 지원하기 때문에 같은 설정값으로 단순하게 재시작을 수행해도 문제가 없었습니다. 그래서 굳이 포드의 중단을 직접 추적하기보단 `replicas=1`인  ReplicaSet을 생성하는 방법을 선택했습니다. 또, 포드가 다시 생성됐을 때 이전 포드가 저장한 WAL, Snapshot 파일을 읽어야 하기 때문에 이를 위한 PVC도 추가했습니다(일반 데이터는 메모리에 저장함). 
+
+Peer간 통신에서도 포드IP를 그대로 사용하지 않고 포드가 재시작되어도 같은 엔드포인트를 사용할 수 있도록 서비스를 추가했습니다.
+
+<img width="687" alt="image" src="https://github.com/KumKeeHyun/godis/assets/44857109/13694197-29e2-49dc-b744-e9e84d0e1ce6">
+
+이 구조로 여러 노드를 생성하게 되면 아래와 같은 형태가 됩니다. 
+
+<img width="1137" alt="image" src="https://github.com/KumKeeHyun/godis/assets/44857109/977b5310-11b9-4ac4-8880-30db3f6c2c16">
+
+GodisCluster는 replicas와 현재 배포된 노드들만 확인하고 새로 노드를 생성할지, 기존 노드를 제거할지만 컨트롤하게 하고싶었는데, 노드에 묶여있는 리소스들이 많아서 원래 역할에 집중하지 못할 것 같았습니다. 
+
+<img width="1302" alt="image" src="https://github.com/KumKeeHyun/godis/assets/44857109/56c1c2bf-895f-4660-a24d-33182e1e402d">
+
+그래서 클러스터 조정과 노드 배포를 분리하기 위해서 중간에 하나의 노드를 대변하는 리소스를 추가했습니다. GodisCluster 이벤트를 수신하는 핸들러는 `.spec.replicas`에 따라 Godis 리소스를 생성/제거하고, Godis가 ReplicaSet, Service, PVC 생성을 책짐지는 구조입니다.
+
+### initial-cluster
+
+Godis를 실행할 때 클러스터 멤버십을 전달하는 `initial-cluster` 설정값은 계속해서 변경됩니다. 그래서 재시작하는 포드는 이전에 전달해주었던 initial-cluster 값을 그대로 사용할 수 없습니다. 
+
+클러스터 맴버십이 변경되더라도 재시작되는 포드에게 옳바른 initial-cluster를 전달할 수 있도록, ConfigMap을 추가했습니다.
+
+<img width="1302" alt="image" src="https://github.com/KumKeeHyun/godis/assets/44857109/93886105-d05c-4c7c-a3cb-f8fd50ece9dc">
+
+## SyncHandler 구현
+
+쿠버네티스 상에서 각 노드를 어떻게 배포할지 정했으니 이제 그걸 컨트롤러로 자동화하는 일만 남았습니다. 조정 작업에서 수행해야 하는 작업은 크게 3가지입니다.
+
+- 새로운 클러스터 생성
+- 클러스터 확장
+- 클러스터 축소
+
+각 조정 작업이 어떻게 이뤄지는지 보기전에 어떤 조정 작업이 필요한지 판단하는 부분부터 살펴보겠습니다.
+
+### Status
+
+앞서 설명했던 것처럼 컨트롤러에서 리소스 조회는 캐시에서 이뤄지기 때문에 API 서버보다 이전의 상태를 기반으로 조정 작업을 하게 될 수 있습니다. 이 때문에 조정 작업 시 기대했던 것보다 더 많은 리소스가 생성/제거될 수 있습니다. 
+
+Godis는 상태 기반 프로세스이고 멤버십이 변경될 때 오버해드(스냅샷, 복제 로그 전송)가 발생하기 때문에 최대한 이런 상황을 피하고자 했습니다.
+
+<img width="1828" alt="image" src="https://github.com/KumKeeHyun/godis/assets/44857109/90243783-7ac7-4483-b200-9ce8fea7566f">
+
+먼저 `.spec.replicas`에 따라 Godis를 생성/제거하는 작업은 ReplicaSet 컨트롤러가 하는 일과 비슷해서, 해당 컨트롤러가 사용하는 Expectations를 이용하는 것을 고려했었습니다. 하지만 Godis는 랜덤한 식별자로 생성되는 것이 아니라 특정한 ID로 생성되어야 하고, 생성/제거 시 다른 노드들에게 멤버십 변경을 알려야 하기 때문에 단순히 몇 개가 생성/제거되었는지 판단하는 Expectations는 부적합하다고 판단했습니다.
+
+<img width="681" alt="image" src="https://github.com/KumKeeHyun/godis/assets/44857109/7b9eba59-8a14-4ef6-9177-9e82e62e9838">
+
+결국 GodisCluster의 `.status` 필드에 진행 상황과 해야할 작업(생성/제거할 ID)를 저장하고, 도중에 실패하더라도 다음 루프에서 진행 상황을 읽어서 작업을 이어나갈 수 있도록 구성했습니다. 또 이전 조정 작업이 정상적으로 끝났는지 확인한 후에 다음 조정 작업을 시작하도록 구성했습니다.
+
+이제 남은 것은 각 조정 작업이 멱등성을 만족하는지 확인하는 것 입니다.
+
+### 클러스터 생성
+
+1. status를 Initializing으로 변경
+   - 이미 Initializing인 경우 스킵
+   - 동시에 여러 수정이 이뤄져도 resourceVersion 덕분에 하나의 요청만 성공함
+2. 초기 멤버십 구성을 위한 initial-cluster를 ConfigMap에 등록
+   - Create 요청 이후 IsAlreadyExists 검사
+3. replicas 값만큼 Godis 생성
+   - Create 요청 이후 IsAlreadyExists 검사
+4. status를 Running으로 변경
+   - 동시에 여러 수정이 이뤄져도 resourceVersion 덕분에 하나의 요청만 성공함
+
+### 클러스터 확장
+
+1. status를 Scaling으로 변경, 새로 생성할 노드의 ID 등록
+   - 이미 Scaling인 경우 스킵
+   - 동시에 여러 수정이 이뤄져도 resourceVersion 덕분에 하나의 요청만 성공함
+   - 이후에 중단되고 다른 루프에서 처리되더라도 새로운 ID를 생성하지 않고 등록한 ID로 노드 생성 진행
+2. 새로운 멤버십의 initial-cluster를 ConfigMap에 등록
+   - Update라서 여러번 요청해도 문제 없음
+3. 기존 클러스터에 멤버십 변경 요청
+   - 같은 ID로 여러번 멤버십 변경 요청해도 문제 없음
+4. Godis 생성
+   - Create 요청 이후 IsAlreadyExists 검사
+5. status를 Running으로 변경
+   - 동시에 여러 수정이 이뤄져도 resourceVersion 덕분에 하나의 요청만 성공함
+
+### 클러스터 축소
+
+1. status를 Scaling으로 변경, 제거할 노드의 ID 등록
+   - 이미 Scaling인 경우 스킵
+   - 동시에 여러 수정이 이뤄져도 resourceVersion 덕분에 하나의 요청만 성공함
+   - 이후에 중단되고 다른 루프에서 처리되더라도 제거할 ID를 다시 선택하지 않고 등록한 ID로 노드 제거 진행
+2. 새로운 멤버십의 initial-cluster를 ConfigMap에 등록
+   - Update라서 여러번 요청해도 문제 없음
+3. Godis 삭제
+   - Delete 요청 이후 IsNotFound 검사
+4. 기존 클러스터에 멤버십 변경 요청
+   - 같은 ID로 여러번 멤버십 변경 요청해도 문제 없음
+5. status를 Running으로 변경
+   - 동시에 여러 수정이 이뤄져도 resourceVersion 덕분에 하나의 요청만 성공함
+
+### 단계적 스케일링
+
+앞서 설명했던 것처럼 클러스터 확장/축소는 한번에 하나의 노드만 작업하도록 계획했습니다. 
+
+이를 위해서 확장/축소 작업은 1개 노드 단위로 작업하도록 구현하고, 작업이 끝난 후에도 남아있는 작업이 있다면 queue에 다시 key를 넣어서 다음 루프에서 처리되도록 구현했습니다.
+
+```go
+func (c *Controller) syncCluster(ctx context.Context, key string) error {
+	// ...
+
+	if requiresInitialize(cluster, configNotExists) {
+		// ...
+	} else if requiresScaleOut(cluster, godises) {
+		// ...
+	} else if requiresScaleIn(cluster, godises) {
+		// ...
+	}
+	if err != nil {
+		return err
+	}
+	if cluster.Spec.Replicas != nil && *cluster.Spec.Replicas != cluster.Status.Replicas {
+		// ...
+		c.clusterQueue.AddAfter(key, requeueDelay)
+	}
+
+	return nil
+}
+```
+
+조정 작업 단위를 1로 고정해 두었기 때문에, 많은 수의 조정 작업을 예약한 경우에 최종 상태까지 도달하는 시간이 많이 걸릴 수 있습니다. 하지만 단일 raft 그룹에서 복제 노드를 10개 이상으로 구성하는 경우는 거의 없기 때문에 문제가 없을 것이라 판단했습니다.
+
+## 결과물
+
+### 클러스터 생성
+
+이제 3개의 노드로 구성된 클러스터를 생성해보겠습니다. 클러스터 생성은 아래와 같이 GodisCluster 리소스를 선언해주면 끝입니다!
+
+```yml
+apiVersion: kumkeehyun.github.com/v1
+kind: GodisCluster
+metadata:
+  name: example-godis
+spec:
+  name: example-godis
+  replicas: 3
+```
+
+![initializ-cluster](https://github.com/KumKeeHyun/godis/assets/44857109/646ad7a3-87bd-4beb-9728-dccfc3c2d1e0)
+
+GIF를 유심히 보시면 `example-godis-1-cqmgs`, `example-godis-2-x2cj8`, `example-godis-3-6vcn2` 총 3개의 포드가 생성된 것을 볼 수 있습니다. 
+
+마지막에 출력된 로그에서는 ID가 2인 `example-godis-2-x2cj8`가 리더로 선출된 것도 확인할 수 있습니다.
+
+### 클러스터 확장
+
+클러스터를 수동으로 확장하려면 기존 클러스터에 멤버십 변경 요청을 보내고 새로운 노드에 설정값을 신경써서 넣어준뒤 실행시켜야 합니다. 이제는 번거로운 작업 없이 `.spec.replicas`를 증가시켜주기만 하면 됩니다.
+
+![scaleout](https://github.com/KumKeeHyun/godis/assets/44857109/634ea8fc-6b2e-45e9-a642-caf1b10739f2)
+
+GIF를 유심히 보시면 스펙을 3에서 4로 수정했더니 `example-godis-4-8bmzs` 포드가 생성된 것을 확인할 수 있습니다. describe 명령으로 출력된 정보의 마지막 이벤트 부분을 보면 ID=4인 Godis를 생성했다는 로그도 볼 수 있습니다.
+
+### 클러스터 축소
+
+클러스터 노드 수를 줄이고 싶다면 확장 때와 마찬가지로 `.spec.replicas`를 감소시켜주기만 하면 됩니다.
+
+![scalein](https://github.com/KumKeeHyun/godis/assets/44857109/397de1d2-295e-4a25-94cd-a026d1b7a02f)
+
+GIF를 유심히 보시면 스펙을 4에서 3로 수정했더니 `example-godis-1-cqmgs` 포드가 제거된 것을 확인할 수 있습니다. describe 명령으로 출력된 정보의 마지막 이벤트 부분을 보면 ID=1인 Godis를 제거했다는 로그도 볼 수 있습니다. 실행중인 포드의 로그도 클러스터 멤버십이 (2,3,4)로 변경된 것을 볼 수 있습니다.
+
+### 포드 중단 및 자동 복구
+
+만약 어떤 이유로 포드가 제거된 경우 ReplicaSet에 의해 자동으로 복구됩니다. 이때 새로 생성된 포드는 이전 포드의 WAL, Snapshot을 복구한 뒤에 기존 클러스터에 참가하게 됩니다.
+
+![pod-autohealing](https://github.com/KumKeeHyun/godis/assets/44857109/b0802f8b-9019-4864-9337-025f6d7ed1fd)
+
+GIF를 유심히 보시면 kubectl delete를 이용해서 `example-godis-4-8bmzs` 포드를 제거했더니 `example-godis-4-24dr7` 포드가 생성된 것을 볼 수 있습니다. 해당 포드의 로그를 보면 이전 포드의 WAL을 잘 복구하고 최종 멤버십이 (2,3,4)로 조정된 것을 확인할 수 있습니다.
+
+이때 Godis 컨트롤러는 ReplicaSet이 알아서 조정해줄 것을 기대하고 아무런 작업을 하지 않습니다.
+
+### 노드 제거 및 자동 복구
+
+만약 수동으로 특정 노드를 제거하고 싶다면 kubectl delete로 해당 Godis 리소스를 제거하면 됩니다. 그럼 Godis 컨트롤러가 해당 노드가 제거된 것을 감지하고 `.spec.replicas`와 같은 수의 노드를 실행시키기 위해 새로운 Godis를 생성합니다.
+
+![godis-autohealing](https://github.com/KumKeeHyun/godis/assets/44857109/db9a535b-45cb-47e6-ae63-8eaf4a88dbd9)
+
+GIF를 유심히 보시면 kubectl delete를 이용해서 `example-godis-3` Godis 리소스를 제거했더니 `example-godis-5` Godis와 `example-godis-5-wzs6h` 포드가 생성된 것을 볼 수 있습니다. `example-godis-5-wzs6h` 포드의 로그를 보면 최종 멤버십이 (2,4,5)로 잘 조정된 것도 확인할 수 있습니다.
 
 # 마치면서
