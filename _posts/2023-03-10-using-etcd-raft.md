@@ -13,6 +13,12 @@ tags:
 last_modified_at: 2023-03-10T00:00:00-00:00
 ---
 
+<div style="display: none">
+	<a href="https://hits.seeyoufarm.com"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fkumkeehyun.github.io%2Fposts%2Fusing-etcd-raft&count_bg=%23F9B0B0&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false"/></a>
+</div>
+
+
+
 - 원본: [원본글 바로가기](https://github.com/KumKeeHyun/raspi-cluster/blob/main/raft/etcd/understanding-etcd-raft-2.md)
 - 이전 시리즈: [etcd raft 모듈 분석해보기](./etcd-raft-insides)
 

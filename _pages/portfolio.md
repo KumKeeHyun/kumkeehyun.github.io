@@ -5,6 +5,10 @@ layout: single
 classes: wide
 ---
 
+<div style="display: none">
+	<a href="https://hits.seeyoufarm.com"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fkumkeehyun.github.io%2Fportfolio&count_bg=%23F9B0B0&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false"/></a>
+</div>
+
 <a href="mailto:kbzjung359@gmail.com" rel="me" class="u-email">
     <meta itemprop="email" content="kbzjung359@gmail.com" />
     <i class="fas fa-fw fa-envelope-square" aria-hidden="true"></i><span class="label">Email</span>
