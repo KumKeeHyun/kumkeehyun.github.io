@@ -275,10 +275,8 @@ SyncHandler를 작성할때 주의해야 하는 점은 리소스 조회 시 API 
 1. `ExpectCreations()`, `ExpectDeletions()`를 통해 원하는 상태를 설정
 2. `SatisfiedExpectations()`를 통해 원하는 상태에 도달했는지 확인
   - 따로 block하지는 않고 그냥 bool으로 반환
-  - false라면 조정 작업을 진행하지 않고 다음 이벤트를 기다림
-  - expections 내부에 ttl이 있기 때문에 조건을 충족하지 않았더라도 expired 되면 true 반환 
+  - expections 내부에 ttl이 있기 때문에 조건을 충족하지 않았더라도 시간이 지나서 expired 되면 true 반환 
 3. `CreationObserved()`, `DeletionObserved()`를 통해 현재 상태 변경
-  - 2.으로 이동
 
 ```go
 // https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/controller_utils.go#L147
