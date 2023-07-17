@@ -14,6 +14,10 @@ tags:
 last_modified_at: 2023-07-07T00:00:00-00:00
 ---
 
+<div style="display: none">
+	<a href="https://hits.seeyoufarm.com"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fkumkeehyun.github.io%2Fposts%2Fkubernetes-custom-controller&count_bg=%23F9B0B0&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false"/></a>
+</div>
+
 - 이전 시리즈
   - [etcd raft 모듈 분석해보기](./etcd-raft-insides)
   - [etcd raft 모듈 사용해보기](./using-etcd-raft)
@@ -27,6 +31,7 @@ last_modified_at: 2023-07-07T00:00:00-00:00
 	- [Controller Manager](#controller-manager)
 	- [Controller 기본 구조](#controller-기본-구조)
 	- [Expectations](#expectations)
+		- [사용법 및 예시](#사용법-및-예시)
 	- [Optimistic Locking(resourceVersion)](#optimistic-lockingresourceversion)
 - [Godis Controller](#godis-controller)
 	- [Godis 가내수공업 배포](#godis-가내수공업-배포)
@@ -48,6 +53,7 @@ last_modified_at: 2023-07-07T00:00:00-00:00
 		- [포드 중단 및 자동 복구](#포드-중단-및-자동-복구)
 		- [노드 제거 및 자동 복구](#노드-제거-및-자동-복구)
 - [마치면서](#마치면서)
+	- [Reference](#reference)
 <!--te-->
 
 # 서론
@@ -262,7 +268,9 @@ SyncHandler를 작성할때 주의해야 하는 점은 리소스 조회 시 API 
 
 사실 시간이 지나면 다시 캐시가 API 서버와 동기화되면서 불필요한 포드가 생성된 것을 확인하고 해당 포드를 제거할 수 있기 때문에, 일반적인 경우에는 큰 문제가 되지 않습니다. 하지만 이런 불필요한 생성/삭제 작업이 어플리케이션의 특성에 따라서 기존 포드들에 큰 영향(데이터베이스 -> id 충돌, scale out 조정 작업...)을 끼칠 수도 있습니다.
 
-쿠버네티스에서는 Create 작업같이 멱등성이 없는 작업을 위해서 Expectations이라는 유틸을 사용합니다. 사용하는 방법은 다음과 같습니다.
+쿠버네티스에서는 Create 작업같이 멱등성이 없는 작업을 위해서 Expectations이라는 유틸을 사용합니다.
+
+### 사용법 및 예시
 
 1. `ExpectCreations()`, `ExpectDeletions()`를 통해 원하는 상태를 설정
 2. `SatisfiedExpectations()`를 통해 원하는 상태에 도달했는지 확인
@@ -453,7 +461,7 @@ func (c *Controller) updateFooStatus(foo *samplev1alpha1.Foo, deployment *appsv1
 
 # Godis Controller
 
-사실 이 글의 메인은 Godis Controller인데... '앞부분이 너무 긴 것 같네 <-> 개념 정리인데 좀 간략하네'의 무한 굴레에 빠졌습니다. 그래도 정리하려 했던 내용은 다 쓴 것 같아서 다음으로 넘어가려합니다.
+사실 이 글의 메인은 Godis Controller인데... '앞부분이 너무 긴 것 같네 <-> 개념 정리인데 좀 간략하네'의 무한 굴레에 빠졌었습니다. 그래도 정리하려 했던 내용은 다 쓴 것 같아서 다음으로 넘어가려합니다.
 
 서론에 써두었지만 Godis Controller의 목표는 yaml 파일로 godis 클러스터를 배포, 확장, 축소할 수 있도록 자동화하는 것이었습니다. 처음엔 StatefulSet으로 가능한지 고려해보았지만, Godis에서는 멤버십이 변경될 떄 기존 클러스터에게 요청을 보내야하기 때문에 로직을 자유롭게 작성할 수 있는 커스텀 컨트롤러로 결정했습니다.
 
@@ -563,7 +571,7 @@ Godis를 실행할 때 클러스터 멤버십을 전달하는 `initial-cluster` 
 
 앞서 설명했던 것처럼 컨트롤러에서 리소스 조회는 캐시에서 이뤄지기 때문에 API 서버보다 이전의 상태를 기반으로 조정 작업을 하게 될 수 있습니다. 이 때문에 조정 작업 시 기대했던 것보다 더 많은 리소스가 생성/제거될 수 있습니다. 
 
-Godis는 상태 기반 프로세스이고 멤버십이 변경될 때 오버해드(스냅샷, 복제 로그 전송)가 발생하기 때문에 최대한 이런 상황을 피하고자 했습니다.
+Godis는 상태 기반 프로세스이고 멤버십이 변경될 때 오버헤드(스냅샷, 복제 로그 전송)가 발생하기 때문에 최대한 이런 상황을 피하고자 했습니다.
 
 <img width="1828" alt="image" src="https://github.com/KumKeeHyun/godis/assets/44857109/90243783-7ac7-4483-b200-9ce8fea7566f">
 
@@ -650,6 +658,8 @@ func (c *Controller) syncCluster(ctx context.Context, key string) error {
 
 ## 결과물
 
+[godis github repo](https://github.com/KumKeeHyun/godis)
+
 ### 클러스터 생성
 
 이제 3개의 노드로 구성된 클러스터를 생성해보겠습니다. 클러스터 생성은 아래와 같이 GodisCluster 리소스를 선언해주면 끝입니다!
@@ -705,3 +715,21 @@ GIF를 유심히 보시면 kubectl delete를 이용해서 `example-godis-4-8bmzs
 GIF를 유심히 보시면 kubectl delete를 이용해서 `example-godis-3` Godis 리소스를 제거했더니 `example-godis-5` Godis와 `example-godis-5-wzs6h` 포드가 생성된 것을 볼 수 있습니다. `example-godis-5-wzs6h` 포드의 로그를 보면 최종 멤버십이 (2,4,5)로 잘 조정된 것도 확인할 수 있습니다.
 
 # 마치면서
+
+이전에 쿠버네티스 컨트롤러에 대해서 개념만 공부했을 때는 간단하다고 생각했었는데, 막상 직접 구현하려고 해보니 고려해야 할 부분이 너무 많아서 좀 당황했었습니다. 과연 완성은 할 수 있을지 걱정했었는데, 어찌어찌 구현하고 의도했던 대로 작동하는 컨트롤러를 확인하고 나름의 성취감을 느꼈습니다.
+
+![고인물짤](https://i.namu.wiki/i/3Rdx9AjAMNhgvidfsjbEECkyeRsHOSkTSUO6LG-etXjn70DXNywOXvD9hmLY2uIwvTHQdGki_lZ-8U4eozhE3POxk6tsgUGUKI16eN5EwIZymiGGugqqhvP6VU8xAaTcLL4zIPq-px9NpbQDphzmfQ.webp)
+
+또 컨트롤러 작성에서 adoption, orphaning 관련된 부분도 다루려 했는데 풀어내지 못해 아쉬움이 남습니다.
+
+그래도 구현에 필요한 개념들을 공부하면서 어렴풋이 알고 있던 개념들을 정리해볼 수 있었고, 단순히 컨테이너 오케스트레이션으로만 생각하고 있던 쿠버네티스를 좀 더 넓은 시각으로 바라볼 수 있게 된 계기가 되었습니다.
+
+글을 읽어주셔서 감사합니다.
+
+## Reference
+
+- https://www.oreilly.com/library/view/kubernetes-in-action/9781617293726/
+- https://engineering.linecorp.com/ko/blog/declarative-cloud-db-service-using-kubernetes
+- https://www.getoutsidedoor.com/2020/05/09/kubernetes-controller-%EA%B5%AC%ED%98%84%ED%95%B4%EB%B3%B4%EA%B8%B0/
+- https://www.youtube.com/watch?v=SWD__6nhLic&t=1770s
+- https://learnk8s.io/etcd-kubernetes
